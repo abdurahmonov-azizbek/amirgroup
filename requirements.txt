@@ -1,0 +1,11 @@
+aiogram==3.17.0
+SQLAlchemy==2.0.38
+alembic==1.14.1
+asyncpg==0.30.0
+pydantic==2.10.6
+pydantic-settings==2.7.1
+aiohttp==3.11.12
+apscheduler==3.11.0
+python-dotenv==1.0.1
+pandas==3.0.2
+openpyxl==3.1.5
