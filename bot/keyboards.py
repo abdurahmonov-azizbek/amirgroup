@@ -50,10 +50,10 @@ def recon_reviewed_kb() -> InlineKeyboardMarkup:
 def auditor_main_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📊 Statistika")],
-            [KeyboardButton(text="📨 Sverka yuborish"), KeyboardButton(text="📢 Ommaviy xabar yuborish")],
-            [KeyboardButton(text="⚠️ Qarzdorlarga eslatma")],
-            [KeyboardButton(text="🔍 Qidiruv")]
+            [KeyboardButton(text="📊 Statistika"), KeyboardButton(text="🔍 Qidiruv")],
+            [KeyboardButton(text="📨 Sverka yuborish"), KeyboardButton(text="📁 Sverkalar")],
+            [KeyboardButton(text="📢 Ommaviy xabar yuborish")],
+            [KeyboardButton(text="⚠️ Qarzdorlarga eslatma")]
         ],
         resize_keyboard=True
     )
@@ -72,7 +72,8 @@ def admin_main_kb() -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text="📈 Umumiy statistika")],
             [KeyboardButton(text="👨‍💼 Auditorlar (Qo'shish/O'chirish)")],
-            [KeyboardButton(text="⚙️ Tizim sozlamalari"), KeyboardButton(text="📁 Sverkalar")]
+            [KeyboardButton(text="📢 Ommaviy xabar yuborish"), KeyboardButton(text="⚠️ Qarzdorlarga eslatma")],
+            [KeyboardButton(text="⚙️ Tizim sozlamalari")]
         ],
         resize_keyboard=True
     )

@@ -4,11 +4,16 @@ from aiogram.fsm.context import FSMContext
 
 from sqlalchemy.future import select
 
-from database.models import User, Reconciliation, ReconciliationLog, UserRole, VerificationStatus
+from database.models import User, Reconciliation, ReconciliationLog, UserRole, VerificationStatus, ReconLogStatus
 from database.session import AsyncSessionLocal
 from bot.states import AuditorStates
-from bot.keyboards import auditor_main_kb, reconciliation_action_kb, auditor_statistics_inline_kb
+from bot.keyboards import auditor_main_kb, reconciliation_action_kb, auditor_statistics_inline_kb, build_reconciliation_pagination_kb
 from services.api_1c import one_c
+from aiogram.types import FSInputFile
+from sqlalchemy import func
+import math
+import pandas as pd
+import os
 
 router = Router()
 
@@ -241,6 +246,105 @@ async def auditor_debt_reminder(message: Message):
         f"✅ <b>{sent_count}</b> ta qarzdor mijozga eslatma yuborildi.",
         parse_mode="HTML"
     )
+
+
+# ─────────────────────────────────────────────
+# 📁 Sverkalar (Excel export) - Auditor uchun
+# ─────────────────────────────────────────────
+@router.message(AuditorStates.main_menu, F.text == "📁 Sverkalar")
+async def auditor_reconciliations(message: Message, state: FSMContext):
+    await render_recon_list(message, page=1)
+
+
+async def render_recon_list(message_or_call, page: int = 1):
+    async with AsyncSessionLocal() as session:
+        # Sverka sonini sanash
+        total_count = (await session.execute(select(func.count(Reconciliation.id)))).scalar()
+        limit = 10
+        total_pages = math.ceil(total_count / limit) if total_count > 0 else 1
+        page = max(1, min(page, total_pages))
+
+        recons = (await session.execute(
+            select(Reconciliation)
+            .order_by(Reconciliation.created_at.desc())
+            .offset((page - 1) * limit).limit(limit)
+        )).scalars().all()
+
+    kb = build_reconciliation_pagination_kb(recons, page, total_pages)
+    text = "📅 Sverka yuborilgan sanalar (Excel yuklab olish uchun bosing):" if recons else "Sverkalar tarixi topilmadi."
+
+    if isinstance(message_or_call, CallbackQuery):
+        await message_or_call.message.edit_text(text, reply_markup=kb)
+    else:
+        await message_or_call.answer(text, reply_markup=kb)
+
+
+@router.callback_query(F.data.startswith("admin_recon_page_"))
+async def auditor_recon_pagination(callback: CallbackQuery):
+    page = int(callback.data.split("_")[-1])
+    await render_recon_list(callback, page=page)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_recon_export_"))
+async def auditor_recon_export(callback: CallbackQuery):
+    recon_id = int(callback.data.split("_")[-1])
+    loading_msg = await callback.message.answer("⏳ Excel tayyorlanmoqda, iltimos kuting...")
+    await callback.answer()
+
+    async with AsyncSessionLocal() as session:
+        recon = await session.get(Reconciliation, recon_id)
+        if not recon:
+            await loading_msg.edit_text("❌ Xatolik: Sverka topilmadi.")
+            return
+
+        result = await session.execute(
+            select(ReconciliationLog, User)
+            .join(User, ReconciliationLog.tele_user_id == User.id)
+            .where(ReconciliationLog.reconciliation_id == recon_id)
+        )
+        rows = result.all()
+
+        if not rows:
+            await loading_msg.edit_text("📭 Ushbu sverka bo'yicha ma'lumotlar topilmadi.")
+            return
+
+        data = []
+        status_map = {
+            ReconLogStatus.sent: "Kutilmoqda",
+            ReconLogStatus.confirmed: "Tasdiqlangan",
+            ReconLogStatus.disowned: "E'tiroz bildirilgan",
+            ReconLogStatus.failed: "Xatolik"
+        }
+
+        for log, user in rows:
+            data.append({
+                "Do'kon nomi": user.market_name or "—",
+                "Telefon": f"+{user.phone_number}" if user.phone_number else "—",
+                "Umumiy qarz": log.total_debt,
+                "Muddati o'tgan qarz": log.overdue_debt,
+                "Holati": status_map.get(log.status, "Noma'lum"),
+                "E'tiroz matni": log.disown_text or "—",
+                "Sana": log.created_at.strftime("%d.%m.%Y %H:%M") if log.created_at else "—"
+            })
+
+        df = pd.DataFrame(data)
+        date_str = recon.created_at.strftime("%Y-%m-%d_%H-%M")
+        filename = f"Sverka_{date_str}.xlsx"
+        filepath = os.path.join("media", filename)
+        os.makedirs("media", exist_ok=True)
+        df.to_excel(filepath, index=False, engine='openpyxl')
+
+        try:
+            await callback.message.answer_document(
+                FSInputFile(filepath),
+                caption=f"📅 {date_str} dagi sverka hisoboti"
+            )
+            await loading_msg.delete()
+        except Exception as e:
+            await loading_msg.edit_text(f"❌ Fayl yuborishda xatolik: {str(e)}")
+        
+    await callback.answer()
 
 
 # ══════════════════════════════════════════════════════════════

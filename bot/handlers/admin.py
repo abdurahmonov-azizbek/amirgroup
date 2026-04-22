@@ -9,8 +9,9 @@ from sqlalchemy import func
 from database.models import User, VerificationStatus, UserRole, Config, Reconciliation, ReconciliationLog, ReconLogStatus
 from database.session import AsyncSessionLocal
 from bot.states import AdminStates
-from bot.keyboards import admin_main_kb, admin_manage_auditors_kb, build_users_pagination_kb, cancel_inline_kb, build_reconciliation_pagination_kb
+from bot.keyboards import admin_main_kb, admin_manage_auditors_kb, build_users_pagination_kb, cancel_inline_kb
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
+from services.api_1c import one_c
 import pandas as pd
 import io
 import os
@@ -389,111 +390,96 @@ async def cb_revoke_auditor(callback: CallbackQuery):
 
 
 # ─────────────────────────────────────────────
-# 📁 Sverkalar (Excel export)
+# 📢 Ommaviy xabar yuborish
 # ─────────────────────────────────────────────
-@router.message(AdminStates.main_menu, F.text == "📁 Sverkalar")
-async def admin_reconciliations(message: Message, state: FSMContext):
-    await render_recon_list(message, page=1)
-
-
-async def render_recon_list(message_or_call, page: int = 1):
-    async with AsyncSessionLocal() as session:
-        # Sverka sonini sanash
-        total_count = (await session.execute(select(func.count(Reconciliation.id)))).scalar()
-        limit = 10
-        total_pages = math.ceil(total_count / limit) if total_count > 0 else 1
-        page = max(1, min(page, total_pages))
-
-        recons = (await session.execute(
-            select(Reconciliation)
-            .order_by(Reconciliation.created_at.desc())
-            .offset((page - 1) * limit).limit(limit)
-        )).scalars().all()
-
-    kb = build_reconciliation_pagination_kb(recons, page, total_pages)
-    text = "📅 Sverka yuborilgan sanalar (Excel yuklab olish uchun bosing):" if recons else "Sverkalar tarixi topilmadi."
-
-    if isinstance(message_or_call, CallbackQuery):
-        await message_or_call.message.edit_text(text, reply_markup=kb)
-    else:
-        await message_or_call.answer(text, reply_markup=kb)
-
-
-@router.callback_query(F.data.startswith("admin_recon_page_"))
-async def admin_recon_pagination(callback: CallbackQuery):
-    page = int(callback.data.split("_")[-1])
-    await render_recon_list(callback, page=page)
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("admin_recon_export_"))
-async def admin_recon_export(callback: CallbackQuery):
-    recon_id = int(callback.data.split("_")[-1])
-    # Toast bildirishnoma o'rniga chatga xabar yuboramiz
-    loading_msg = await callback.message.answer("⏳ Excel tayyorlanmoqda, iltimos kuting...")
-    await callback.answer()
-
-    async with AsyncSessionLocal() as session:
-        # Reconciliation sessionni olish
-        recon = await session.get(Reconciliation, recon_id)
-        if not recon:
-            await loading_msg.edit_text("❌ Xatolik: Sverka topilmadi.")
-            return
-
-        # Loglarni user info bilan birga olish
-        result = await session.execute(
-            select(ReconciliationLog, User)
-            .join(User, ReconciliationLog.tele_user_id == User.id)
-            .where(ReconciliationLog.reconciliation_id == recon_id)
+@router.message(AdminStates.main_menu, F.text == "📢 Ommaviy xabar yuborish")
+async def admin_mass_message(message: Message, state: FSMContext):
+    await message.answer(
+        "✍️ Mijozlarga yubormoqchi bo'lgan xabaringizni yozing:\n"
+        "<i>(Matn, rasm yoki video bo'lishi mumkin)</i>",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="admin_cancel_broadcast")]]
         )
-        rows = result.all()
+    )
+    await state.set_state(AdminStates.waiting_for_broadcast_message)
 
-        if not rows:
-            await loading_msg.edit_text("📭 Ushbu sverka bo'yicha ma'lumotlar topilmadi.")
-            return
 
-        data = []
-        status_map = {
-            ReconLogStatus.sent: "Kutilmoqda",
-            ReconLogStatus.confirmed: "Tasdiqlangan",
-            ReconLogStatus.disowned: "E'tiroz bildirilgan",
-            ReconLogStatus.failed: "Xatolik"
-        }
-
-        for log, user in rows:
-            data.append({
-                "Do'kon nomi": user.market_name or "—",
-                "Telefon": f"+{user.phone_number}" if user.phone_number else "—",
-                "Umumiy qarz": log.total_debt,
-                "Muddati o'tgan qarz": log.overdue_debt,
-                "Holati": status_map.get(log.status, "Noma'lum"),
-                "E'tiroz matni": log.disown_text or "—",
-                "Sana": log.created_at.strftime("%d.%m.%Y %H:%M") if log.created_at else "—"
-            })
-
-        # DataFrame yaratish
-        df = pd.DataFrame(data)
-        
-        # Fayl nomi
-        date_str = recon.created_at.strftime("%Y-%m-%d_%H-%M")
-        filename = f"Sverka_{date_str}.xlsx"
-        filepath = os.path.join("media", filename)
-        
-        # Media papkasi mavjudligini tekshirish
-        os.makedirs("media", exist_ok=True)
-
-        # Excelga saqlash
-        df.to_excel(filepath, index=False, engine='openpyxl')
-
-        # Faylni yuborish
-        try:
-            await callback.message.answer_document(
-                FSInputFile(filepath),
-                caption=f"📅 {date_str} dagi sverka hisoboti"
-            )
-            # Yuklash xabarini o'chiramiz
-            await loading_msg.delete()
-        except Exception as e:
-            await loading_msg.edit_text(f"❌ Fayl yuborishda xatolik: {str(e)}")
-        
+@router.callback_query(AdminStates.waiting_for_broadcast_message, F.data == "admin_cancel_broadcast")
+async def admin_cancel_broadcast(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_text("❌ Bekor qilindi.")
+    await callback.message.answer("Admin paneliga xush kelibsiz!", reply_markup=admin_main_kb())
+    await state.set_state(AdminStates.main_menu)
     await callback.answer()
+
+
+@router.message(AdminStates.waiting_for_broadcast_message)
+async def admin_process_broadcast_message(message: Message, state: FSMContext):
+    async with AsyncSessionLocal() as session:
+        users_result = await session.execute(
+            select(User)
+            .where(User.role == UserRole.user)
+            .where(User.verification_status == VerificationStatus.verified)
+        )
+        clients = users_result.scalars().all()
+
+    sent_count = 0
+    for client in clients:
+        if client.user_id:
+            try:
+                await message.copy_to(client.user_id)
+                sent_count += 1
+            except Exception:
+                pass
+
+    await message.answer(
+        f"✅ Ommaviy xabar <b>{sent_count}</b> ta mijozga yuborildi.",
+        parse_mode="HTML",
+        reply_markup=admin_main_kb()
+    )
+    await state.set_state(AdminStates.main_menu)
+
+
+# ─────────────────────────────────────────────
+# ⚠️ Qarzdorlarga eslatma yuborish
+# ─────────────────────────────────────────────
+@router.message(AdminStates.main_menu, F.text == "⚠️ Qarzdorlarga eslatma")
+async def admin_debt_reminder(message: Message):
+    status_msg = await message.answer("🔍 Qarzdorlar ro'yxati shakllantirilmoqda, iltimos kuting...")
+
+    async with AsyncSessionLocal() as session:
+        users_result = await session.execute(
+            select(User)
+            .where(User.role == UserRole.user)
+            .where(User.verification_status == VerificationStatus.verified)
+        )
+        clients = users_result.scalars().all()
+
+    sent_count = 0
+    for client in clients:
+        if not client.user_id or not client.phone_number:
+            continue
+
+        # 1C dan qarzni tekshirish
+        client_data = await one_c.check_user(client.phone_number)
+        if not client_data or "Contracts" not in client_data:
+            continue
+
+        total_debt = sum(c.get("TotalDebt", 0) for c in client_data["Contracts"])
+
+        if total_debt > 0:
+            reminder_text = (
+                f"🔔 <b>DIQQAT!</b>\n\n"
+                f"Hurmatli mijoz, sizning qarzdorligingiz mavjud.\n"
+                f"Iltimos, to'lovlarni o'z vaqtida amalga oshiring."
+            )
+            try:
+                await message.bot.send_message(client.user_id, reminder_text, parse_mode="HTML")
+                sent_count += 1
+            except Exception:
+                pass
+
+    await status_msg.edit_text(
+        f"✅ <b>{sent_count}</b> ta qarzdor mijozga eslatma yuborildi.",
+        parse_mode="HTML"
+    )

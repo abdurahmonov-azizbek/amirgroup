@@ -31,3 +31,4 @@ class AdminStates(StatesGroup):
     main_menu = State()
     editing_config = State()
     waiting_for_rejection_reason = State()
+    waiting_for_broadcast_message = State()
