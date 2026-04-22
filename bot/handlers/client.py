@@ -67,8 +67,8 @@ async def client_balance(message: Message):
         f"🏪 Do'kon: <b>{user.market_name or '—'}</b>\n"
         f"📞 Telefon: +{user.phone_number}\n\n"
         f"━━━━━━━━━━━━━━━━\n"
-        f"💳 Umumiy qarz: <b>{total_debt:,.0f} so'm</b>\n"
-        f"⚠️ Muddati o'tgan: <b>{total_overdue:,.0f} so'm</b>\n"
+        f"💳 Umumiy qarz: <b>{total_debt:,.0f} $</b>\n"
+        f"⚠️ Muddati o'tgan: <b>{total_overdue:,.0f} $</b>\n"
     )
     await msg.edit_text(text, parse_mode="HTML")
 
@@ -96,8 +96,8 @@ async def send_contracts_page(target, phone: str, page: int):
     for i, c in enumerate(chunk, start=(page - 1) * ITEMS_PER_PAGE + 1):
         text += (
             f"🔹 <b>{i}. {c.get('Contract', '—')}</b>\n"
-            f"   💳 Umumiy qarz: {c.get('TotalDebt', 0):,.0f} so'm\n"
-            f"   ⚠️ Muddati o'tgan: {c.get('OverdueDebt', 0):,.0f} so'm"
+            f"   💳 Umumiy qarz: {c.get('TotalDebt', 0):,.0f} $\n"
+            f"   ⚠️ Muddati o'tgan: {c.get('OverdueDebt', 0):,.0f} $"
             f"   ({c.get('OverdueDays', 0)} kun)\n\n"
         )
 
@@ -151,7 +151,7 @@ async def send_sales_page(target, phone: str, page: int):
         text += (
             f"🔖 <b>{s.get('Document', '—')} №{s.get('Number', '—')}</b>\n"
             f"   📅 Sana: {s.get('Date', '—')}\n"
-            f"   💵 Summa: {s.get('Amount', 0):,.0f} so'm\n"
+            f"   💵 Summa: {s.get('Amount', 0):,.0f} $\n"
             f"   📂 Shartnoma: {s.get('Contract', '—')}\n\n"
         )
 
@@ -392,8 +392,8 @@ async def process_recon_disown_text(message: Message, state: FSMContext):
                 f"▪️ Telefon: +{u.phone_number}\n"
                 f"▪️ Telegram: {username_str} (ID: {u.user_id})\n\n"
                 f"📊 <b>Sverka ma'lumotlari (1C):</b>\n"
-                f"▪️ Umumiy qarz: <b>{total_debt:,.0f} so'm</b>\n"
-                f"▪️ Muddati o'tgan: <b>{overdue_debt:,.0f} so'm</b>\n\n"
+                f"▪️ Umumiy qarz: <b>{total_debt:,.0f} $</b>\n"
+                f"▪️ Muddati o'tgan: <b>{overdue_debt:,.0f} $</b>\n\n"
                 f"━━━━━━━━━━━━━━━━\n"
                 f"💬 <b>E'tiroz matni:</b>\n"
                 f"<i>{message.text}</i>"

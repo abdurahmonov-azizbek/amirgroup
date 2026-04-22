@@ -34,7 +34,7 @@ async def auto_debt_alert(bot: Bot):
                         alert = (
                             f"🔔 DIQQAT!\n"
                             f"Hurmatli mijoz, {c.get('Contract')} bo'yicha qarz muddati o'tdi.\n"
-                            f"Qarz miqdori: {overdue_debt:,.2f} so'm.\n"
+                            f"Qarz miqdori: {overdue_debt:,.2f} $.\n"
                             f"Bloklanmaslik uchun to'lovni zudlik bilan amalga oshiring!"
                         )
                         await bot.send_message(client.user_id, alert)

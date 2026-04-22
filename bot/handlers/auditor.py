@@ -74,10 +74,10 @@ async def process_auditor_stat(callback: CallbackQuery):
             name = u.market_name or u.first_name or "—"
 
             if stat_type == "debtors" and total_debt > 0:
-                text += f"▫️ {name} | Qarz: {total_debt:,.0f} so'm\n"
+                text += f"▫️ {name} | Qarz: {total_debt:,.0f} $\n"
                 count += 1
             elif stat_type == "overdue" and total_overdue > 0:
-                text += f"▫️ {name} | Muddati o'tgan: {total_overdue:,.0f} so'm\n"
+                text += f"▫️ {name} | Muddati o'tgan: {total_overdue:,.0f} $\n"
                 count += 1
 
         if count == 0:
@@ -125,8 +125,8 @@ async def auditor_broadcast_recon(message: Message, state: FSMContext):
             text = (
                 f"📋 <b>Hurmatli {client.market_name or client.first_name}!</b>\n\n"
                 f"Oy yakuni bo'yicha hisob-kitob:\n\n"
-                f"💳 Umumiy qarz: <b>{total_debt:,.0f} so'm</b>\n"
-                f"⚠️ Muddati o'tgan: <b>{overdue_debt:,.0f} so'm</b>\n\n"
+                f"💳 Umumiy qarz: <b>{total_debt:,.0f} $</b>\n"
+                f"⚠️ Muddati o'tgan: <b>{overdue_debt:,.0f} $</b>\n\n"
                 f"Iltimos, ushbu ma'lumotni tasdiqlang yoki e'tiroz bildiring."
             )
             try:
@@ -463,8 +463,8 @@ def _user_detail_text(u: User, one_c_data: dict | None) -> str:
         overdue = sum(c.get("OverdueDebt", 0) for c in one_c_data.get("Contracts", []))
         text += (
             f"━━━━━━━━━━━━━━━━\n"
-            f"💳 Umumiy qarz: <b>{total_debt:,.0f} so'm</b>\n"
-            f"⚠️ Muddati o'tgan: <b>{overdue:,.0f} so'm</b>\n"
+            f"💳 Umumiy qarz: <b>{total_debt:,.0f} $</b>\n"
+            f"⚠️ Muddati o'tgan: <b>{overdue:,.0f} $</b>\n"
             f"📄 Shartnomalar soni: <b>{len(one_c_data.get('Contracts', []))}</b>\n"
         )
     return text
@@ -643,8 +643,8 @@ async def search_contracts(callback: CallbackQuery, state: FSMContext):
         days = c.get("OverdueDays", 0)
         line = (
             f"\n🔹 <b>{c.get('Contract', '—')}</b>\n"
-            f"   💳 Qarz: <b>{debt:,.0f} so'm</b>\n"
-            f"   ⚠️ Muddati o'tgan: <b>{overdue:,.0f} so'm</b>"
+            f"   💳 Qarz: <b>{debt:,.0f} $</b>\n"
+            f"   ⚠️ Muddati o'tgan: <b>{overdue:,.0f} $</b>"
         )
         if days:
             line += f" ({days} kun)"
@@ -691,8 +691,8 @@ async def search_debts(callback: CallbackQuery, state: FSMContext):
         days = c.get("OverdueDays", 0)
         line = (
             f"\n🔸 <b>{c.get('Contract', '—')}</b>\n"
-            f"   💳 Umumiy qarz: <b>{debt:,.0f} so'm</b>\n"
-            f"   ⚠️ Muddati o'tgan: <b>{overdue:,.0f} so'm</b>"
+            f"   💳 Umumiy qarz: <b>{debt:,.0f} $</b>\n"
+            f"   ⚠️ Muddati o'tgan: <b>{overdue:,.0f} $</b>"
         )
         if days:
             line += f" ({days} kun)"
