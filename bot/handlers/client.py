@@ -328,7 +328,9 @@ async def recon_confirm_cb(callback: CallbackQuery):
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(ReconciliationLog)
+            .join(User, ReconciliationLog.tele_user_id == User.id)
             .where(ReconciliationLog.reconciliation_id == recon_id)
+            .where(User.user_id == callback.from_user.id)
         )
         log = result.scalar_one_or_none()
         if log:
