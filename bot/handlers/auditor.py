@@ -11,6 +11,7 @@ from bot.keyboards import auditor_main_kb, reconciliation_action_kb, auditor_sta
 from services.api_1c import one_c
 from aiogram.types import FSInputFile
 from sqlalchemy import func
+from aiogram.filters import StateFilter
 import math
 import pandas as pd
 import os
@@ -21,7 +22,7 @@ router = Router()
 # ─────────────────────────────────────────────
 # 📊 Statistika menyusi
 # ─────────────────────────────────────────────
-@router.message(AuditorStates.main_menu, F.text == "📊 Statistika")
+@router.message(StateFilter(AuditorStates.main_menu, AuditorStates.waiting_for_search_query, AuditorStates.viewing_search_results), F.text == "📊 Statistika")
 async def auditor_statistics_menu(message: Message):
     await message.answer(
         "📊 Statistika va hisobotlar:",
@@ -94,7 +95,7 @@ async def process_auditor_stat(callback: CallbackQuery):
 # ─────────────────────────────────────────────
 # 📨 Sverka yuborish
 # ─────────────────────────────────────────────
-@router.message(AuditorStates.main_menu, F.text == "📨 Sverka yuborish")
+@router.message(StateFilter(AuditorStates.main_menu, AuditorStates.waiting_for_search_query, AuditorStates.viewing_search_results), F.text == "📨 Sverka yuborish")
 async def auditor_broadcast_recon(message: Message, state: FSMContext):
     msg = await message.answer("⏳ Barcha mijozlarga sverka so'rovi yuborilmoqda...")
 
@@ -155,7 +156,7 @@ async def auditor_broadcast_recon(message: Message, state: FSMContext):
 # ─────────────────────────────────────────────
 # 📢 Ommaviy xabar yuborish
 # ─────────────────────────────────────────────
-@router.message(AuditorStates.main_menu, F.text == "📢 Ommaviy xabar yuborish")
+@router.message(StateFilter(AuditorStates.main_menu, AuditorStates.waiting_for_search_query, AuditorStates.viewing_search_results), F.text == "📢 Ommaviy xabar yuborish")
 async def auditor_mass_message(message: Message, state: FSMContext):
     await message.answer(
         "✍️ Mijozlarga yubormoqchi bo'lgan xabaringizni yozing:\n"
@@ -206,7 +207,7 @@ async def process_broadcast_message(message: Message, state: FSMContext):
 # ─────────────────────────────────────────────
 # ⚠️ Qarzdorlarga eslatma yuborish
 # ─────────────────────────────────────────────
-@router.message(AuditorStates.main_menu, F.text == "⚠️ Qarzdorlarga eslatma")
+@router.message(StateFilter(AuditorStates.main_menu, AuditorStates.waiting_for_search_query, AuditorStates.viewing_search_results), F.text == "⚠️ Qarzdorlarga eslatma")
 async def auditor_debt_reminder(message: Message):
     status_msg = await message.answer("🔍 Qarzdorlar ro'yxati shakllantirilmoqda, iltimos kuting...")
 
@@ -251,7 +252,7 @@ async def auditor_debt_reminder(message: Message):
 # ─────────────────────────────────────────────
 # 📁 Sverkalar (Excel export) - Auditor uchun
 # ─────────────────────────────────────────────
-@router.message(AuditorStates.main_menu, F.text == "📁 Sverkalar")
+@router.message(StateFilter(AuditorStates.main_menu, AuditorStates.waiting_for_search_query, AuditorStates.viewing_search_results), F.text == "📁 Sverkalar")
 async def auditor_reconciliations(message: Message, state: FSMContext):
     await render_recon_list(message, page=1)
 
@@ -471,7 +472,7 @@ def _user_detail_text(u: User, one_c_data: dict | None) -> str:
 
 
 # ── 1. Qidiruv boshlash ──────────────────────────────────────
-@router.message(AuditorStates.main_menu, F.text == "🔍 Qidiruv")
+@router.message(StateFilter(AuditorStates.main_menu, AuditorStates.waiting_for_search_query, AuditorStates.viewing_search_results), F.text == "🔍 Qidiruv")
 async def auditor_search_start(message: Message, state: FSMContext):
     await state.clear()
     await state.set_state(AuditorStates.waiting_for_search_query)
@@ -515,7 +516,10 @@ async def process_search_query(message: Message, state: FSMContext):
             f"❌ <b>«{keyword}»</b> bo'yicha hech kim topilmadi.",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup(
-                inline_keyboard=[[InlineKeyboardButton(text="🔄 Qayta qidirish", callback_data="srch_retry")]]
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🔄 Qayta qidirish", callback_data="srch_retry")],
+                    [InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="srch_cancel")]
+                ]
             )
         )
         await state.update_data(keyword=keyword, found_ids=[], current_list_page=1)
@@ -703,4 +707,9 @@ async def search_debts(callback: CallbackQuery, state: FSMContext):
         text, parse_mode="HTML",
         reply_markup=_build_sub_kb("debts", user_db_id, page, total_pages)
     )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "ignore")
+async def ignore_callback(callback: CallbackQuery):
     await callback.answer()
