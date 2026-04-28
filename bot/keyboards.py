@@ -113,6 +113,7 @@ def build_users_pagination_kb(users, page: int, total_pages: int, action_prefix:
     
     for u in users:
         name = f"{u.first_name or ''} {u.last_name or ''} {u.middle_name or ''}"
+        name += f" ({u.user_id})"
         buttons.append([InlineKeyboardButton(text=name, callback_data=f"{action_prefix}_{u.id}")])
         
     nav_row = []
