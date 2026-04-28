@@ -13,26 +13,18 @@ from core.config import settings
 
 logger = logging.getLogger(__name__)
 
-
 class AutoRestoreStateMiddleware(BaseMiddleware):
-    """
-    Bot restart bo'lgandan keyin FSM state yo'qoladi.
-    Bu middleware har bir xabar/callback kelganda state ni tekshiradi,
-    agar None bo'lsa — foydalanuvchi roliga qarab state ni tiklaydi,
-    keyin asl handleriga yo'naltiradi (swallow qilmaydi!).
-    """
-
     async def __call__(
         self,
         handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
         event: TelegramObject,
         data: Dict[str, Any],
     ) -> Any:
-        # Faqat Message va CallbackQuery uchun ishlaydi
+        # Faqat Message va CallbackQuery uchun
         if not isinstance(event, (Message, CallbackQuery)):
             return await handler(event, data)
 
-        # /start ni o'zi handle qiladi
+        # /start komandasi bo'lsa middleware aralashmaydi
         if isinstance(event, Message) and event.text and event.text.startswith("/start"):
             return await handler(event, data)
 
@@ -41,24 +33,21 @@ class AutoRestoreStateMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         current_state = await state.get_state()
-
-        # State allaqachon bor — hech narsa qilma
+        
+        # Agar state allaqachon mavjud bo'lsa, davom etamiz
         if current_state is not None:
             return await handler(event, data)
 
-        # ── State None: restart bo'lgan, tiklash kerak ──
-        if isinstance(event, Message):
-            user_id = event.from_user.id
-        else:
-            user_id = event.from_user.id
+        # State yo'q (restartdan keyin) - uni tiklashimiz kerak
+        user_id = event.from_user.id
 
-        # Admin
+        # 1. Admin tekshiruvi
         if user_id in settings.ADMIN_IDS:
             await state.set_state(AdminStates.main_menu)
-            logger.info("Auto-restored AdminStates.main_menu for user %s", user_id)
-            # State tiklandi — asl handler ishlayveradi
+            logger.info(f"Restored Admin state for {user_id}")
             return await handler(event, data)
 
+        # 2. Bazadan foydalanuvchini tekshirish
         async with AsyncSessionLocal() as session:
             result = await session.execute(
                 select(User).where(User.user_id == user_id)
@@ -68,19 +57,13 @@ class AutoRestoreStateMiddleware(BaseMiddleware):
         if not user:
             return await handler(event, data)
 
-        # Auditor
+        # 3. Roliga qarab state-ni tiklash (HECH QANDAY XABAR YUBORMASDAN)
         if user.role == UserRole.auditor:
             await state.set_state(AuditorStates.main_menu)
-            logger.info("Auto-restored AuditorStates.main_menu for user %s", user_id)
-            return await handler(event, data)
-
-        # Tasdiqlangan mijoz
-        if user.verification_status == VerificationStatus.verified:
+        elif user.verification_status == VerificationStatus.verified:
             await state.set_state(ClientStates.main_menu)
-            logger.info("Auto-restored ClientStates.main_menu for user %s", user_id)
-            return await handler(event, data)
-
-        # Kutilmoqda yoki yangi — /start ga yo'naltirish
-        if isinstance(event, Message):
+        elif user.verification_status == VerificationStatus.verification_pending:
             await state.set_state(RegistrationStates.waiting_for_approval)
+        
+        # State tiklandi, endi asl handler ishga tushadi va tugma bosilganini sezadi
         return await handler(event, data)
