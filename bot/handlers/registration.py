@@ -1,7 +1,8 @@
+import logging
 import os
 from aiogram import Router, F
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, CallbackQuery
-from aiogram.filters import CommandStart, CommandObject
+from aiogram.filters import CommandStart, CommandObject, StateFilter
 from aiogram.fsm.context import FSMContext
 
 from sqlalchemy.future import select
@@ -534,3 +535,85 @@ async def process_rejection_reason(message: Message, state: FSMContext):
 
     await state.clear()
 
+
+logger = logging.getLogger(__name__)
+
+
+# ─────────────────────────────────────────────
+# Servis qayta ishga tushgandan keyin sessiyani tiklash
+# (StateFilter(None) — hech qanday holat yo'q bo'lganda ishlaydi)
+# ─────────────────────────────────────────────
+@router.message(StateFilter(None))
+async def auto_restore_state(message: Message, state: FSMContext):
+    """
+    After a service restart, FSM states (stored in memory) are wiped.
+    This handler catches any message from a known user with no FSM state
+    and automatically restores their correct menu — no /start required.
+    """
+    # /start is already handled by cmd_start above — skip it here
+    if message.text and message.text.startswith("/"):
+        return
+
+    user_id = message.from_user.id
+
+    # Admin — no DB lookup needed
+    if is_admin(user_id):
+        from bot.keyboards import admin_main_kb
+        await state.set_state(AdminStates.main_menu)
+        await message.answer(
+            "👑 Admin panelga xush kelibsiz!",
+            reply_markup=admin_main_kb()
+        )
+        logger.info("Auto-restored AdminStates for user %s", user_id)
+        return
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(User).where(User.user_id == user_id)
+        )
+        user = result.scalar_one_or_none()
+
+    if not user:
+        # Brand-new user — nudge them to /start
+        await message.answer("👋 Botdan foydalanish uchun /start ni bosing.")
+        return
+
+    # Auditor
+    if user.role == UserRole.auditor:
+        await state.set_state(AuditorStates.main_menu)
+        await message.answer(
+            "🎖 Auditor menyusiga xush kelibsiz!",
+            reply_markup=auditor_main_kb()
+        )
+        logger.info("Auto-restored AuditorStates for user %s", user_id)
+        return
+
+    # Verified client
+    if user.verification_status == VerificationStatus.verified:
+        await state.set_state(ClientStates.main_menu)
+        await message.answer(
+            "✅ Asosiy menyu:",
+            reply_markup=client_main_kb()
+        )
+        logger.info("Auto-restored ClientStates for user %s", user_id)
+        return
+
+    # Pending approval
+    if user.verification_status == VerificationStatus.verification_pending:
+        await state.set_state(RegistrationStates.waiting_for_approval)
+        await message.answer(
+            "⏳ Sizning ma'lumotlaringiz ko'rib chiqilmoqda.\n"
+            "Tasdiqlanganidan so'ng sizga xabar beramiz."
+        )
+        return
+
+    # Rejected
+    if user.verification_status == VerificationStatus.rejected:
+        await message.answer(
+            "❌ Sizning arizangiz rad etildi.\n"
+            "Qaytadan ro'yxatdan o'tish uchun /start ni bosing."
+        )
+        return
+
+    # New / incomplete registration
+    await message.answer("👋 Ro'yxatdan o'tish uchun /start ni bosing.")
