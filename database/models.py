@@ -136,3 +136,10 @@ class Config(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class FSMState(Base):
+    __tablename__ = "fsm_states"
+    user_id = Column(BigInteger, primary_key=True)
+    chat_id = Column(BigInteger, primary_key=True)
+    state = Column(String, nullable=True)
+    data = Column(String, nullable=True)
