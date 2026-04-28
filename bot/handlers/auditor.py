@@ -455,6 +455,7 @@ def _user_detail_text(u: User, one_c_data: dict | None) -> str:
         f"🆔 ID: <code>{u.id}</code>\n"
         f"👤 F.I.Sh: <b>{full}</b>\n"
         f"🏪 Do'kon: <b>{u.market_name or '—'}</b>\n"
+        f"📍 Viloyat: <b>{u.region or '—'}</b>\n"
         f"📞 Telefon: <b>{phone}</b>\n"
         f"🔖 Username: @{u.username or '—'}\n"
         f"📋 Status: {vstatus}\n"

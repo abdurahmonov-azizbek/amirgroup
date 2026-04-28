@@ -158,4 +158,22 @@ def cancel_inline_kb() -> InlineKeyboardMarkup:
         inline_keyboard=[[InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="cancel_action")]]
     )
 
+def regions_kb() -> InlineKeyboardMarkup:
+    regions = [
+        "Andijon", "Buxoro", "Farg'ona", "Jizzax", "Xorazm", 
+        "Namangan", "Navoiy", "Qashqadaryo", "Samarqand", 
+        "Sirdaryo", "Surxondaryo", "Toshkent", "Qoraqalpog'iston"
+    ]
+    keyboard = []
+    # Create rows with 2 buttons each
+    for i in range(0, len(regions), 2):
+        row = []
+        row.append(InlineKeyboardButton(text=regions[i], callback_data=f"reg_{regions[i]}"))
+        if i + 1 < len(regions):
+            row.append(InlineKeyboardButton(text=regions[i+1], callback_data=f"reg_{regions[i+1]}"))
+        keyboard.append(row)
+    
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
 

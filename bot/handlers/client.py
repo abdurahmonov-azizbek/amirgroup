@@ -310,6 +310,7 @@ async def client_profile(message: Message):
         f"👤 <b>Mening profilim</b>\n\n"
         f"📛 F.I.Sh: <b>{full_name}</b>\n"
         f"🏪 Do'kon nomi: <b>{user.market_name or '—'}</b>\n"
+        f"📍 Viloyat: <b>{user.region or '—'}</b>\n"
         f"📞 Telefon: +{user.phone_number or '—'}\n"
         f"🪪 PINFL: <code>{user.pinfl or '—'}</code>\n"
         f"🆔 Telegram: {username_str}\n\n"

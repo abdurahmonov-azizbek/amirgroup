@@ -4,6 +4,7 @@ class RegistrationStates(StatesGroup):
     waiting_for_offer = State()
     waiting_for_phone = State()
     waiting_for_market_name = State()
+    waiting_for_region = State()
     waiting_for_first_name = State()
     waiting_for_last_name = State()
     waiting_for_middle_name = State()

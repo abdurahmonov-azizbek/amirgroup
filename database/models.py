@@ -55,6 +55,7 @@ class User(Base):
 
     phone_number = Column(String, nullable=True)
     market_name = Column(String, nullable=True)
+    region = Column(String, nullable=True)
 
     passport_front_side = Column(String, nullable=True)
     passport_back_side = Column(String, nullable=True)

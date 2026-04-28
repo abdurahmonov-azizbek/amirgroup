@@ -10,7 +10,7 @@ from sqlalchemy.future import select
 from database.models import User, VerificationStatus, UserRole
 from database.session import AsyncSessionLocal
 from bot.states import RegistrationStates, ClientStates, AuditorStates, AdminStates
-from bot.keyboards import offer_kb, phone_request_kb, client_main_kb, auditor_main_kb, cancel_inline_kb
+from bot.keyboards import offer_kb, phone_request_kb, client_main_kb, auditor_main_kb, cancel_inline_kb, regions_kb
 from services.api_1c import one_c
 from services.config_db import get_config
 from core.config import settings
@@ -185,8 +185,27 @@ async def process_market_name(message: Message, state: FSMContext):
         user.market_name = message.text.strip()
         await session.commit()
 
-    await message.answer("👤 Ismingizni kiriting:")
+    await message.answer("📍 Viloyatingizni tanlang:", reply_markup=regions_kb())
+    await state.set_state(RegistrationStates.waiting_for_region)
+
+
+# ─────────────────────────────────────────────
+# Viloyat
+# ─────────────────────────────────────────────
+@router.callback_query(RegistrationStates.waiting_for_region, F.data.startswith("reg_"))
+async def process_region(callback: CallbackQuery, state: FSMContext):
+    region = callback.data.replace("reg_", "")
+    
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(User).where(User.user_id == callback.from_user.id))
+        user = result.scalar_one()
+        user.region = region
+        await session.commit()
+
+    await callback.message.edit_text(f"📍 Viloyat: <b>{region}</b>", parse_mode="HTML")
+    await callback.message.answer("👤 Ismingizni kiriting:")
     await state.set_state(RegistrationStates.waiting_for_first_name)
+    await callback.answer()
 
 
 # ─────────────────────────────────────────────
@@ -340,6 +359,7 @@ async def process_selfie(message: Message, state: FSMContext):
     group_text = (
         f"🔔 Yangi verifikatsiya so'rovi!\n\n"
         f"🏪 Do'kon: {user.market_name}\n"
+        f"📍 Viloyat: {user.region or '—'}\n"
         f"👤 F.I.Sh: {user.last_name} {user.first_name} {user.middle_name or ''}\n"
         f"📞 Telefon: +{user.phone_number}\n"
         f"🪪 PINFL: {user.pinfl}\n"
@@ -486,6 +506,7 @@ async def process_rejection_reason(message: Message, state: FSMContext):
         original_text = (
             f"🔔 Yangi verifikatsiya so'rovi!\n\n"
             f"🏪 Do'kon: {target_user.market_name}\n"
+            f"📍 Viloyat: {target_user.region or '—'}\n"
             f"👤 F.I.Sh: {target_user.last_name} {target_user.first_name} {target_user.middle_name or ''}\n"
             f"📞 Telefon: +{target_user.phone_number}\n"
             f"🪪 PINFL: {target_user.pinfl}\n"
