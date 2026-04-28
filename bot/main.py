@@ -24,6 +24,12 @@ async def main():
     logging.info("Starting task schedules...")
     setup_scheduler(bot)
 
+    # Restartdan keyin barcha foydalanuvchilar state'ini tiklash
+    try:
+        await fill_missing_states()
+    except Exception as e:
+        logging.error(f"Error filling states: {e}")
+
     logging.info("Bot is starting with Persistent Storage...")
     await dp.start_polling(bot)
 
