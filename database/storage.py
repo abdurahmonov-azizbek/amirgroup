@@ -1,8 +1,9 @@
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from aiogram.fsm.storage.base import BaseStorage, StorageKey
+from aiogram.fsm.state import State
 from sqlalchemy.future import select
 from sqlalchemy.dialects.postgresql import insert
 
@@ -12,21 +13,24 @@ from database.session import AsyncSessionLocal
 logger = logging.getLogger(__name__)
 
 class SQLAlchemyStorage(BaseStorage):
-    async def set_state(self, key: StorageKey, state: Optional[str] = None) -> None:
+    async def set_state(self, key: StorageKey, state: Optional[Union[str, State]] = None) -> None:
         try:
+            # State obyektini matnga (string) o'giramiz
+            state_val = state.state if isinstance(state, State) else state
+            
             async with AsyncSessionLocal() as session:
                 stmt = insert(FSMState).values(
                     user_id=key.user_id,
                     chat_id=key.chat_id,
-                    state=state,
+                    state=state_val,
                     data="{}"
                 ).on_conflict_do_update(
                     index_elements=['user_id', 'chat_id'],
-                    set_={'state': state}
+                    set_={'state': state_val}
                 )
                 await session.execute(stmt)
                 await session.commit()
-                logger.info(f"FSM State set: {key.user_id} -> {state}")
+                logger.info(f"FSM State set: {key.user_id} -> {state_val}")
         except Exception as e:
             logger.error(f"FSM set_state error: {e}")
 
