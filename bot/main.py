@@ -5,6 +5,7 @@ from core.config import settings
 from bot.handlers import registration, client, auditor, admin
 from bot.scheduler import setup_scheduler
 from database.storage import SQLAlchemyStorage
+from fill_fsm_states import fill_missing_states
 
 logging.basicConfig(level=logging.INFO)
 
