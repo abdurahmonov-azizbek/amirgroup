@@ -185,7 +185,7 @@ async def process_market_name(message: Message, state: FSMContext):
         user.market_name = message.text.strip()
         await session.commit()
 
-    await message.answer("👤 Ismingizni kiriting (Ism):")
+    await message.answer("👤 Ismingizni kiriting:")
     await state.set_state(RegistrationStates.waiting_for_first_name)
 
 
@@ -200,7 +200,7 @@ async def process_first_name(message: Message, state: FSMContext):
         user.first_name = message.text.strip()
         await session.commit()
 
-    await message.answer("👤 Familiyangizni kiriting (Familiya):")
+    await message.answer("👤 Familiyangizni kiriting:")
     await state.set_state(RegistrationStates.waiting_for_last_name)
 
 
@@ -215,7 +215,7 @@ async def process_last_name(message: Message, state: FSMContext):
         user.last_name = message.text.strip()
         await session.commit()
 
-    await message.answer("👤 Otasining ismini kiriting (Sharif/Otasining ismi):")
+    await message.answer("👤 Sharifingizni kiriting (Otasining ismi):")
     await state.set_state(RegistrationStates.waiting_for_middle_name)
 
 
@@ -230,12 +230,9 @@ async def process_middle_name(message: Message, state: FSMContext):
         user.middle_name = message.text.strip()
         await session.commit()
 
-    data = await state.get_data()
-    one_c_tax_id = data.get("one_c_tax_id", "")
 
     await message.answer(
-        f"🪪 PINFL raqamingizni kiriting:\n"
-        f"<i>(1C dan: {one_c_tax_id})</i>",
+        f"🪪 PINFL raqamingizni kiriting:\n",
         parse_mode="HTML"
     )
     await state.set_state(RegistrationStates.waiting_for_pinfl)

@@ -322,8 +322,8 @@ async def auditor_recon_export(callback: CallbackQuery):
             data.append({
                 "Do'kon nomi": user.market_name or "—",
                 "Telefon": f"+{user.phone_number}" if user.phone_number else "—",
-                "Umumiy qarz": log.total_debt,
-                "Muddati o'tgan qarz": log.overdue_debt,
+                "Umumiy qarz ($)": log.total_debt,
+                "Muddati o'tgan qarz ($)": log.overdue_debt,
                 "Holati": status_map.get(log.status, "Noma'lum"),
                 "E'tiroz matni": log.disown_text or "—",
                 "Sana": log.created_at.strftime("%d.%m.%Y %H:%M") if log.created_at else "—"
