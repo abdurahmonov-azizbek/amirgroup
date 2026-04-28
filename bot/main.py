@@ -19,9 +19,9 @@ async def main():
     dp.include_router(auditor.router)
     dp.include_router(admin.router)
 
-    # Restart dan keyin state tiklash middleware
-    dp.message.middleware(AutoRestoreStateMiddleware())
-    dp.callback_query.middleware(AutoRestoreStateMiddleware())
+    # Restart dan keyin state tiklash (outer = routing DAN OLDIN ishlaydi)
+    dp.message.outer_middleware(AutoRestoreStateMiddleware())
+    dp.callback_query.outer_middleware(AutoRestoreStateMiddleware())
 
     logging.info("Starting task schedules...")
     setup_scheduler(bot)
