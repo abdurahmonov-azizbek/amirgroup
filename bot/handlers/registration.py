@@ -251,10 +251,10 @@ async def process_middle_name(message: Message, state: FSMContext):
 
 
     await message.answer(
-        f"🪪 PINFL raqamingizni kiriting:\n",
+        "🤳 Yuzingiz aniq ko'ringan <b>selfie</b> rasmingizni yuboring:",
         parse_mode="HTML"
     )
-    await state.set_state(RegistrationStates.waiting_for_pinfl)
+    await state.set_state(RegistrationStates.waiting_for_selfie)
 
 
 # ─────────────────────────────────────────────
@@ -362,7 +362,10 @@ async def process_selfie(message: Message, state: FSMContext):
         f"📍 Viloyat: {user.region or '—'}\n"
         f"👤 F.I.Sh: {user.last_name} {user.first_name} {user.middle_name or ''}\n"
         f"📞 Telefon: +{user.phone_number}\n"
-        f"🪪 PINFL: {user.pinfl}\n"
+    )
+    if user.pinfl:
+        group_text += f"🪪 PINFL: {user.pinfl}\n"
+    group_text += (
         f"🆔 Telegram: {username_str} (ID: {user.user_id})\n\n"
         f"Iltimos, hujjatlarni tekshiring va tasdiqlang."
     )
@@ -376,11 +379,25 @@ async def process_selfie(message: Message, state: FSMContext):
 
     if data_chat_id != 0:
         try:
-            media = MediaGroupBuilder(caption=f"📸 {user.market_name} — hujjatlar")
-            media.add_photo(FSInputFile(user.passport_front_side))
-            media.add_photo(FSInputFile(user.passport_back_side))
-            media.add_photo(FSInputFile(user.selfie_photo))
-            await message.bot.send_media_group(chat_id=data_chat_id, media=media.build())
+            photos_to_send = []
+            if user.passport_front_side and os.path.exists(user.passport_front_side):
+                photos_to_send.append(user.passport_front_side)
+            if user.passport_back_side and os.path.exists(user.passport_back_side):
+                photos_to_send.append(user.passport_back_side)
+            if user.selfie_photo and os.path.exists(user.selfie_photo):
+                photos_to_send.append(user.selfie_photo)
+
+            if len(photos_to_send) > 1:
+                media = MediaGroupBuilder(caption=f"📸 {user.market_name} — hujjatlar")
+                for photo_path in photos_to_send:
+                    media.add_photo(FSInputFile(photo_path))
+                await message.bot.send_media_group(chat_id=data_chat_id, media=media.build())
+            elif len(photos_to_send) == 1:
+                await message.bot.send_photo(
+                    chat_id=data_chat_id,
+                    photo=FSInputFile(photos_to_send[0]),
+                    caption=f"📸 {user.market_name} — hujjatlar"
+                )
         except Exception as e:
             print(f"Guruhga rasm yuborishda xato: {e}")
 
@@ -470,7 +487,7 @@ async def handle_rejection_start(message: Message, state: FSMContext, arg: str):
         f"🗑 <b>{target_user.market_name or target_user.first_name}</b> "
         f"ro'yxatdan o'tish arizasini rad etmoqchisiz.\n\n"
         f"✍️ Rad etish sababini yozing:\n"
-        f"<i>(Masalan: Pasport rasmi noto'g'ri, PINFL mos kelmadi va h.k)</i>",
+        f"<i>(Masalan: Rasm aniq emas, ma'lumotlar xato va h.k)</i>",
         parse_mode="HTML",
         reply_markup=cancel_inline_kb()
     )
@@ -509,7 +526,10 @@ async def process_rejection_reason(message: Message, state: FSMContext):
             f"📍 Viloyat: {target_user.region or '—'}\n"
             f"👤 F.I.Sh: {target_user.last_name} {target_user.first_name} {target_user.middle_name or ''}\n"
             f"📞 Telefon: +{target_user.phone_number}\n"
-            f"🪪 PINFL: {target_user.pinfl}\n"
+        )
+        if target_user.pinfl:
+            original_text += f"🪪 PINFL: {target_user.pinfl}\n"
+        original_text += (
             f"🆔 Telegram: {username_str} (ID: {target_user.user_id})\n\n"
             f"Iltimos, hujjatlarni tekshiring va tasdiqlang."
         )

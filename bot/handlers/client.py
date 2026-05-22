@@ -312,7 +312,10 @@ async def client_profile(message: Message):
         f"🏪 Do'kon nomi: <b>{user.market_name or '—'}</b>\n"
         f"📍 Viloyat: <b>{user.region or '—'}</b>\n"
         f"📞 Telefon: +{user.phone_number or '—'}\n"
-        f"🪪 PINFL: <code>{user.pinfl or '—'}</code>\n"
+    )
+    if user.pinfl:
+        text += f"🪪 PINFL: <code>{user.pinfl}</code>\n"
+    text += (
         f"🆔 Telegram: {username_str}\n\n"
         f"━━━━━━━━━━━━━━━━\n"
         f"📋 Holati: {status_label}"
