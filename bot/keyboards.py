@@ -70,7 +70,7 @@ def auditor_statistics_inline_kb() -> InlineKeyboardMarkup:
 def admin_main_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📈 Umumiy statistika")],
+            [KeyboardButton(text="📈 Umumiy statistika"), KeyboardButton(text="📊 Statistika")],
             [KeyboardButton(text="👨‍💼 Auditorlar (Qo'shish/O'chirish)")],
             [KeyboardButton(text="📢 Ommaviy xabar yuborish"), KeyboardButton(text="⚠️ Qarzdorlarga eslatma")],
             [KeyboardButton(text="⚙️ Tizim sozlamalari")]

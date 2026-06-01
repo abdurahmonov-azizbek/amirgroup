@@ -178,6 +178,79 @@ async def admin_statistics(message: Message):
 
 
 # ─────────────────────────────────────────────
+# Viloyatlar bo'yicha statistika
+# ─────────────────────────────────────────────
+@router.message(AdminStates.main_menu, F.text == "📊 Statistika")
+async def admin_region_statistics(message: Message):
+    regions = [
+        "Andijon", "Buxoro", "Farg'ona", "Jizzax", "Xorazm", 
+        "Namangan", "Navoiy", "Qashqadaryo", "Samarqand", 
+        "Sirdaryo", "Surxondaryo", "Toshkent", "Qoraqalpog'iston"
+    ]
+
+    async with AsyncSessionLocal() as session:
+        stmt = (
+            select(User.region, User.verification_status, func.count(User.id))
+            .where(User.role == UserRole.user)
+            .where(User.region.isnot(None))
+            .group_by(User.region, User.verification_status)
+        )
+        result = await session.execute(stmt)
+        rows = result.all()
+
+    stats = {}
+    for region, status, count in rows:
+        if region not in stats:
+            stats[region] = {"total": 0, "verified": 0, "pending": 0}
+        stats[region]["total"] += count
+        if status == VerificationStatus.verified:
+            stats[region]["verified"] += count
+        elif status == VerificationStatus.verification_pending:
+            stats[region]["pending"] += count
+
+    text = "📊 <b>Hududlar bo'yicha foydalanuvchilar statistikasi:</b>\n\n"
+    total_all_users = 0
+    total_verified_all = 0
+    total_pending_all = 0
+
+    # Avval standart ro'yxatdagi viloyatlarni chiqaramiz
+    for r in regions:
+        reg_stat = stats.get(r, {"total": 0, "verified": 0, "pending": 0})
+        total = reg_stat["total"]
+        verified = reg_stat["verified"]
+        pending = reg_stat["pending"]
+
+        total_all_users += total
+        total_verified_all += verified
+        total_pending_all += pending
+
+        if total > 0:
+            text += f"📍 <b>{r}</b>: {total} ta (Tasdiqlangan: {verified}, Kutilayotgan: {pending})\n"
+        else:
+            text += f"📍 <b>{r}</b>: 0 ta\n"
+
+    # Agar ro'yxatda yo'q, lekin bazada uchragan boshqa hududlar bo'lsa, ularni ham chiqaramiz
+    for r, reg_stat in stats.items():
+        if r not in regions:
+            total = reg_stat["total"]
+            verified = reg_stat["verified"]
+            pending = reg_stat["pending"]
+
+            total_all_users += total
+            total_verified_all += verified
+            total_pending_all += pending
+
+            text += f"📍 <b>{r}</b>: {total} ta (Tasdiqlangan: {verified}, Kutilayotgan: {pending})\n"
+
+    text += (
+        f"\n<b>Jami:</b> {total_all_users} ta "
+        f"(Tasdiqlangan: {total_verified_all}, Kutilayotgan: {total_pending_all})"
+    )
+
+    await message.answer(text, parse_mode="HTML")
+
+
+# ─────────────────────────────────────────────
 # Tizim sozlamalari
 # ─────────────────────────────────────────────
 @router.message(AdminStates.main_menu, F.text == "⚙️ Tizim sozlamalari")
